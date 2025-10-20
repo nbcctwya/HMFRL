@@ -205,3 +205,24 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+
+# for my project
+# Ignore compressed archives
+*.zip
+*.tar.gz
+*.rar
+
+# Ignore large or auto-generated CSV files
+# (adjust patterns based on your project's naming convention)
+*large*.csv
+*dump*.csv
+*export*.csv
+raw_data/*.csv
+temp/*.csv
+*1s*.csv
+*1m*.csv
+*3m*.csv
+*5m*.csv
+*15m*.csv
+*30m*.csv
