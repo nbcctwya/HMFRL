@@ -35,4 +35,4 @@ def merge_binance_klines(data_dir="./btc_1m_data", output_file="BTCUSDT_1m_full.
 # merge_binance_klines(data_dir="./btc_1m_data", output_file="BTCUSDT_1m_2020-2025.csv")
 
 
-merge_binance_klines(data_dir="./btc_1d_data", output_file="BTCUSDT_1d_2020-2025.csv")
+# merge_binance_klines(data_dir="./btc_1d_data", output_file="BTCUSDT_1d_2020-2025.csv")

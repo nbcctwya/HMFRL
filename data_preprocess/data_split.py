@@ -37,7 +37,7 @@ def plot_data_split(crypt_name, train_df, val_df, test_df):
     plt.show()
 
 # 数据集切分主函数
-def data_split(filename, train_end_date = "2024-01-01", val_end_date = "2024-12-31"):
+def data_split(filename, symbol="BTCUSDT", interval="1d",train_end_date = "2024-01-01", val_end_date = "2024-12-31"):
     df = pd.read_csv(filename)
     # 将时间戳转为 datetime
     df["open_time"] = pd.to_datetime(df["open_time"], unit="ms")
