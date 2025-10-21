@@ -1,24 +1,28 @@
-# tools/utils.py
+# tools/log_utils.py
 import logging
-import os
-from datetime import datetime
 from pathlib import Path
+from datetime import datetime
 
 
-def setup_logger(log_dir: str = "logs", name: str = "pipeline"):
-    """设置日志系统"""
-    log_dir = Path(log_dir)
-    log_dir.mkdir(exist_ok=True)
+def setup_logger(logs_dir, name="data_pipeline"):
+    """
+    设置日志系统
 
-    # 日志文件名包含日期
-    log_file = log_dir / f"{name}_{datetime.now().strftime('%Y-%m-%d')}.log"
+    Args:
+        logs_dir: 日志目录路径（字符串或 Path）
+        name: 日志名称
+    """
+    logs_path = Path(logs_dir)
+    logs_path.mkdir(parents=True, exist_ok=True)  # 自动创建多级目录
+
+    log_file = logs_path / f"{name}_{datetime.now().strftime('%Y-%m-%d')}.log"
 
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s',
         handlers=[
             logging.FileHandler(log_file, encoding='utf-8'),
-            logging.StreamHandler()  # 同时输出到控制台
+            logging.StreamHandler()
         ]
     )
     return logging.getLogger(name)
