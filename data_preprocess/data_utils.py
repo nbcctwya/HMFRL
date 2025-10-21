@@ -14,8 +14,6 @@ import zipfile
 from pathlib import Path
 import matplotlib.pyplot as plt
 import yaml
-# 导入日志工具
-from tools.log_utils import setup_logger
 
 def load_config(config_path="config.yaml"):
     """加载配置文件"""
@@ -171,51 +169,22 @@ def merge_binance_klines(symbol, interval, config, logger):
     return str(output_file)
 
 # 修复时间戳函数 (✅BTCUSDT 2025年之后的数据是微秒级，之前是毫秒级)
-# def normalize_timestamp(ts):
-#     """安全的时间戳标准化函数"""
-#     # 如果是字符串，尝试转换为数值
-#     if isinstance(ts, str):
-#         try:
-#             ts = float(ts)
-#         except (ValueError, TypeError):
-#             return pd.NA  # 无法转换的字符串返回 NaN
-#     # 如果是 NaN 或 None
-#     if pd.isna(ts):
-#         return ts
-#     # 现在确保 ts 是数值类型
-#     try:
-#         ts = float(ts)
-#     except (ValueError, TypeError):
-#         return pd.NA
-#     # 标准化时间戳
-#     if ts > 1e15:  # 微秒 → 毫秒
-#         return ts // 1000
-#     elif ts > 1e12:  # 毫秒 → 保留
-#         return ts
-#     elif ts > 1e9:  # 秒 → 毫秒
-#         return ts * 1000
-#     else:
-#         return ts
-
 def normalize_timestamp_safe(ts):
     """安全的时间戳标准化函数"""
-    # # 处理 NaN
-    # if pd.isna(ts):
-    #     return pd.NA
-    #
-    # # 处理字符串
-    # if isinstance(ts, str):
-    #     try:
-    #         ts = float(ts.strip())
-    #     except (ValueError, TypeError):
-    #         return pd.NA
-
+    # 处理 NaN
+    if pd.isna(ts):
+        return pd.NA
+    # 处理字符串
+    if isinstance(ts, str):
+        try:
+            ts = float(ts.strip())
+        except (ValueError, TypeError):
+            return pd.NA
     # 确保是数值
     try:
         ts = float(ts)
     except (ValueError, TypeError):
         return pd.NA
-
     # 标准化时间戳
     if ts > 1e15:  # 微秒 → 毫秒
         return ts // 1000
@@ -236,20 +205,15 @@ def data_format_repair(symbol, interval, config, logger):
         logger.error(f"文件不存在: {input_file}")
         return None
     df = pd.read_csv(input_file)
-    # df.columns = [
-    #     'open_time', 'open', 'high', 'low', 'close', 'volume',
-    #     'close_time', 'quote_asset_volume', 'number_of_trades',
-    #     'taker_buy_base_volume', 'taker_buy_quote_volume', 'ignore'
-    # ]
-    print(df)
+    # print(df)
     # 关键：先转换为数值类型，无效值设为 NaN
     df['open_time'] = pd.to_numeric(df['open_time'], errors='coerce')
     df['close_time'] = pd.to_numeric(df['close_time'], errors='coerce')
-    print(df)
+    # print(df)
     # 修复时间戳
     df['open_time'] = df['open_time'].apply(normalize_timestamp_safe)
     df['close_time'] = df['close_time'].apply(normalize_timestamp_safe)
-    print(df)
+    # print(df)
 
     fixed_file = processed_dir / f"{symbol}_{interval}_clean.csv"
     df.to_csv(fixed_file, index=False, header=True)

@@ -12,29 +12,29 @@ from data_utils import(
     data_format_repair,
     data_split
 )
+# 导入日志工具
 from tools.log_utils import setup_logger
 
 
 def main():
-    # 读取你的 raw 文件
-    df_raw = pd.read_csv("../data/processed/csv/BTCUSDT_1d_raw.csv", header=None)
-    print("原始数据前3行:")
-    print(df_raw.head(3))
-    print("\nopen_time 列的数据类型:", df_raw[0].dtype)
-    print("open_time 列的唯一值类型:")
-    print(df_raw[0].apply(type).value_counts())
-
-    # 应用修复前检查
-    df_raw.columns = ['open_time', 'open', 'high', 'low', 'close', 'volume',
-                      'close_time', 'quote_asset_volume', 'number_of_trades',
-                      'taker_buy_base_volume', 'taker_buy_quote_volume', 'ignore']
-
-    # 检查转换为数值后的结果
-    open_time_numeric = pd.to_numeric(df_raw['open_time'], errors='coerce')
-    print(f"\n转换为数值后，NaN 数量: {open_time_numeric.isna().sum()}")
-    print("前10个数值:")
-    print(open_time_numeric.head(10))
-
+    # # 读取你的 raw 文件
+    # df_raw = pd.read_csv("../data/processed/csv/BTCUSDT_1d_raw.csv", header=None)
+    # print("原始数据前3行:")
+    # print(df_raw.head(3))
+    # print("\nopen_time 列的数据类型:", df_raw[0].dtype)
+    # print("open_time 列的唯一值类型:")
+    # print(df_raw[0].apply(type).value_counts())
+    #
+    # # 应用修复前检查
+    # df_raw.columns = ['open_time', 'open', 'high', 'low', 'close', 'volume',
+    #                   'close_time', 'quote_asset_volume', 'number_of_trades',
+    #                   'taker_buy_base_volume', 'taker_buy_quote_volume', 'ignore']
+    #
+    # # 检查转换为数值后的结果
+    # open_time_numeric = pd.to_numeric(df_raw['open_time'], errors='coerce')
+    # print(f"\n转换为数值后，NaN 数量: {open_time_numeric.isna().sum()}")
+    # print("前10个数值:")
+    # print(open_time_numeric.head(10))
 
     # 加载配置
     config_path = PROJECT_ROOT / "config.yaml"

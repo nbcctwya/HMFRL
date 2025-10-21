@@ -1,7 +1,7 @@
 # config.yaml
 data:
-  # symbols: ["BTCUSDT", "ETHUSDT"]   # 支持多币种
-  symbols: ["BTCUSDT"]
+  symbols: ["BTCUSDT", "ETHUSDT"]   # 支持多币种
+  #symbols: ["BTCUSDT"]
   #intervals: ["1d", "1m"]           # 支持多周期
   intervals: ["1d"]
   start_date: "2020-01"
