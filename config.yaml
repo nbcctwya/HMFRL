@@ -1,6 +1,13 @@
 # config.yaml
 data:
-  symbols: ["BTCUSDT", "ETHUSDT"]   # 支持多币种
+  symbols: ["BTCUSDT", "ETHUSDT", "DOGEUSDT", "TRXUSDT", "BNBUSDT",
+            "XRPUSDT", "ADAUSDT", "LINKUSDT", "XLMUSDT", "BCHUSDT",
+            "HBARUSDT", "LTCUSDT", "ZECUSDT"]   # 支持多币种
+  # SOLUSDT 2020年8月才发行
+  # AVAXUSDT 2020年9月才发行
+  # SHIBUSDT 2021年5月才发行
+  # DOTUSDT 2020年8月才发行
+  # TAOUSDT 2024年4月才发行
   #symbols: ["BTCUSDT"]
   #intervals: ["1d", "1m"]           # 支持多周期
   intervals: ["1d"]

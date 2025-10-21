@@ -237,12 +237,12 @@ def split_data_by_datetime(df, train_end_date, val_end_date):
 # 画出数据集切分图像
 def plot_data_split(crypt_name, train_df, val_df, test_df, datasets_dir):
     plt.figure(figsize=(12, 4))
-    print(type(train_df['open_time']))
-    print(type(train_df['close']))
+    # print(type(train_df['open_time']))
+    # print(type(train_df['close']))
     plt.plot(train_df['open_time'], train_df['close'], label='Train', color='blue')
     plt.plot(val_df['open_time'], val_df['close'], label='Validation', color='orange')
     plt.plot(test_df['open_time'], test_df['close'], label='Test', color='red')
-    print(train_df['close'])
+    # print(train_df['close'])
     plt.axvline(val_df['open_time'].min(), color='k', linestyle='--', alpha=0.5)
     plt.axvline(test_df['open_time'].min(), color='k', linestyle='--', alpha=0.5)
     plt.legend()
