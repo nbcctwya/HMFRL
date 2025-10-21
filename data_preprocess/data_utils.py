@@ -36,8 +36,8 @@ def get_data_dirs(symbol, interval, config):
 
 
 # =============== 核心函数 ===============
-# 从Binance下载原始数据
-def download_binance_klines(symbol, interval, config, logger, timeframe="monthly"):
+# 从Binance下载原始数据，最多3次尝试重新下载
+def download_binance_klines(symbol, interval, config, logger, timeframe="monthly", max_retries=3):
     dirs = get_data_dirs(symbol, interval, config)
     # 创建保存目录
     save_dir = dirs["raw"]
@@ -47,27 +47,71 @@ def download_binance_klines(symbol, interval, config, logger, timeframe="monthly
     end = datetime.strptime(config["data"]["end_date"], "%Y-%m")
     current = start
     logger.info(f"开始下载 {symbol} {interval} 数据")
+    failed_files = []  # 记录失败的文件
     while current <= end:
         year, month = current.year, current.month
         filename = f"{symbol}-{interval}-{year}-{month:02d}.zip"
         url = f"https://data.binance.vision/data/spot/{timeframe}/klines/{symbol}/{interval}/{filename}"
-        # filepath = os.path.join(save_dir, filename)
         filepath = save_dir / filename
+
+        # 检查文件是否已存在且完整
         if filepath.exists():
-            logger.info(f"已存在，跳过: {filename}")
-        else:
+            if is_valid_zip(filepath):
+                logger.info(f"✅ 已存在且有效: {filename}")
+                current += relativedelta(months=1)
+                continue
+            else:
+                logger.warning(f"⚠️ 文件损坏，重新下载: {filename}")
+                filepath.unlink()  # 删除损坏文件
+
+        # 尝试下载（带重试）
+        success = False
+        for attempt in range(max_retries):
             try:
+                logger.info(f"📥 下载 {filename} (尝试 {attempt + 1}/{max_retries})")
                 response = requests.get(url, stream=True, timeout=30)
                 if response.status_code == 200:
                     with open(filepath, "wb") as f:
                         for chunk in response.iter_content(chunk_size=8192):
                             f.write(chunk)
-                    logger.info(f"下载成功: {filename}")
+
+                    # 验证下载的文件
+                    if is_valid_zip(filepath):
+                        logger.info(f"✅ 下载成功: {filename}")
+                        success = True
+                        break
+                    else:
+                        logger.warning(f"⚠️ 文件无效，重试: {filename}")
+                        if filepath.exists():
+                            filepath.unlink()
                 else:
-                    logger.warning(f"下载失败: {filename} (状态码: {response.status_code})")
+                    logger.warning(f"❌ HTTP {response.status_code}: {filename}")
             except Exception as e:
-                logger.error(f"下载异常 {filename}: {e}")
+                logger.error(f"⚠️ 下载异常 {filename} (尝试 {attempt + 1}): {e}")
+                if filepath.exists():
+                    filepath.unlink()  # 删除可能损坏的文件
+
+        if not success:
+            logger.error(f"❌ 最终下载失败: {filename}")
+            failed_files.append(filename)
+
         current += relativedelta(months=1)
+    # 报告失败情况
+    if failed_files:
+        logger.warning(f"⚠️ {len(failed_files)} 个文件下载失败: {failed_files}")
+    else:
+        logger.info("✅ 所有文件下载完成")
+    return len(failed_files) == 0  # 返回是否全部成功
+
+def is_valid_zip(filepath):
+    """验证 ZIP 文件是否完整"""
+    try:
+        with zipfile.ZipFile(filepath, 'r') as z:
+            # 检查 ZIP 文件完整性
+            bad_file = z.testzip()
+            return bad_file is None
+    except (zipfile.BadZipFile, OSError):
+        return False
 
 # 多个.zip文件合并为CSV文件
 def merge_binance_klines(symbol, interval, config, logger):
@@ -178,13 +222,14 @@ def plot_data_split(crypt_name, train_df, val_df, test_df, datasets_dir):
     plt.plot(train_df['open_time'], train_df['close'], label='Train', color='blue')
     plt.plot(val_df['open_time'], val_df['close'], label='Validation', color='orange')
     plt.plot(test_df['open_time'], test_df['close'], label='Test', color='red')
+    print(train_df['close'])
     plt.axvline(val_df['open_time'].min(), color='k', linestyle='--', alpha=0.5)
     plt.axvline(test_df['open_time'].min(), color='k', linestyle='--', alpha=0.5)
     plt.legend()
     plt.title(f'{crypt_name} SPLIT')
     plt.xlabel("Date")
     plt.ylabel("Close Price")
-    plt.show()
+    #plt.show()
     plot_path = Path(datasets_dir) / f"{crypt_name}_split.png"
     plt.savefig(plot_path, dpi=150, bbox_inches='tight')
     plt.close()
