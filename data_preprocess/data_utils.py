@@ -120,23 +120,66 @@ def merge_binance_klines(symbol, interval, config, logger):
     processed_dir = dirs["processed"]
     processed_dir.mkdir(parents=True, exist_ok=True)
 
-    zip_files = sorted(glob.glob(str(raw_dir / "*.zip")))
+    # 获取期望的文件列表
+    start = datetime.strptime(config["data"]["start_date"], "%Y-%m")
+    end = datetime.strptime(config["data"]["end_date"], "%Y-%m")
+    expected_files = []
+    current = start
+    while current <= end:
+        filename = f"{symbol}-{interval}-{current.year}-{current.month:02d}.zip"
+        expected_files.append(filename)
+        current += relativedelta(months=1)
+
+    # 查找实际存在的 ZIP 文件
+    zip_files = []
+    missing_files = []
+    for filename in expected_files:
+        filepath = raw_dir / filename
+        if filepath.exists() and is_valid_zip(filepath):
+            zip_files.append(str(filepath))
+        else:
+            missing_files.append(filename)
+    # 报告缺失文件
+    if missing_files:
+        logger.warning(
+            f"⚠️ 缺失 {len(missing_files)} 个文件: {missing_files[:5]}{'...' if len(missing_files) > 5 else ''}")
+
     if not zip_files:
-        logger.error(f"未找到 ZIP 文件: {raw_dir}")
+        logger.error(f"❌ 没有找到任何有效的 ZIP 文件: {raw_dir}")
         return None
 
-    dfs = []
-    for zip_path in zip_files:
-        with zipfile.ZipFile(zip_path, 'r') as z:
-            for csv_name in z.namelist():
-                if csv_name.endswith('.csv'):
-                    with z.open(csv_name) as f:
-                        df = pd.read_csv(f, header=None)
-                        dfs.append(df)
-                        logger.debug(f"读取: {csv_name}")
+    # 原版本
+    # zip_files = sorted(glob.glob(str(raw_dir / "*.zip")))
+    # if not zip_files:
+    #     logger.error(f"未找到 ZIP 文件: {raw_dir}")
+    #     return None
+    # dfs = []
+    # for zip_path in zip_files:
+    #     with zipfile.ZipFile(zip_path, 'r') as z:
+    #         for csv_name in z.namelist():
+    #             if csv_name.endswith('.csv'):
+    #                 with z.open(csv_name) as f:
+    #                     df = pd.read_csv(f, header=None)
+    #                     dfs.append(df)
+    #                     logger.debug(f"读取: {csv_name}")
 
+    # 合并存在的文件
+    dfs = []
+    processed_files = 0
+    for zip_path in sorted(zip_files):
+        try:
+            with zipfile.ZipFile(zip_path, 'r') as z:
+                for csv_name in z.namelist():
+                    if csv_name.endswith('.csv'):
+                        with z.open(csv_name) as f:
+                            df = pd.read_csv(f, header=None)
+                            dfs.append(df)
+                            processed_files += 1
+        except Exception as e:
+            logger.error(f"❌ 处理 ZIP 文件失败 {zip_path}: {e}")
+            continue
     if not dfs:
-        logger.error("未找到任何 CSV 文件")
+        logger.error("❌ 未找到任何有效的 CSV 文件")
         return None
 
     full_df = pd.concat(dfs, ignore_index=True)
@@ -219,6 +262,8 @@ def split_data_by_datetime(df, train_end_date, val_end_date):
 # 画出数据集切分图像
 def plot_data_split(crypt_name, train_df, val_df, test_df, datasets_dir):
     plt.figure(figsize=(12, 4))
+    print(type(train_df['open_time']))
+    print(type(train_df['close']))
     plt.plot(train_df['open_time'], train_df['close'], label='Train', color='blue')
     plt.plot(val_df['open_time'], val_df['close'], label='Validation', color='orange')
     plt.plot(test_df['open_time'], test_df['close'], label='Test', color='red')
