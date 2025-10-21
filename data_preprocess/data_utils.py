@@ -45,26 +45,27 @@ def download_binance_klines(symbol, interval, config, logger, timeframe="monthly
     # 解析起止时间
     start = datetime.strptime(config["data"]["start_date"], "%Y-%m")
     end = datetime.strptime(config["data"]["end_date"], "%Y-%m")
+    # 生成期望的文件列表
+    expected_files = []
     current = start
-    logger.info(f"开始下载 {symbol} {interval} 数据")
-    failed_files = []  # 记录失败的文件
     while current <= end:
-        year, month = current.year, current.month
-        filename = f"{symbol}-{interval}-{year}-{month:02d}.zip"
+        filename = f"{symbol}-{interval}-{current.year}-{current.month:02d}.zip"
+        expected_files.append(filename)
+        current += relativedelta(months=1)
+
+    failed_files = []
+    successful_files = []
+
+    for filename in expected_files:
         url = f"https://data.binance.vision/data/spot/{timeframe}/klines/{symbol}/{interval}/{filename}"
         filepath = save_dir / filename
 
-        # 检查文件是否已存在且完整
-        if filepath.exists():
-            if is_valid_zip(filepath):
-                logger.info(f"✅ 已存在且有效: {filename}")
-                current += relativedelta(months=1)
-                continue
-            else:
-                logger.warning(f"⚠️ 文件损坏，重新下载: {filename}")
-                filepath.unlink()  # 删除损坏文件
+        # 检查是否已存在且有效
+        if filepath.exists() and is_valid_zip(filepath):
+            successful_files.append(filename)
+            continue
 
-        # 尝试下载（带重试）
+        # 尝试下载
         success = False
         for attempt in range(max_retries):
             try:
@@ -75,13 +76,12 @@ def download_binance_klines(symbol, interval, config, logger, timeframe="monthly
                         for chunk in response.iter_content(chunk_size=8192):
                             f.write(chunk)
 
-                    # 验证下载的文件
                     if is_valid_zip(filepath):
-                        logger.info(f"✅ 下载成功: {filename}")
+                        successful_files.append(filename)
                         success = True
                         break
                     else:
-                        logger.warning(f"⚠️ 文件无效，重试: {filename}")
+                        logger.warning(f"⚠️ 文件无效: {filename}")
                         if filepath.exists():
                             filepath.unlink()
                 else:
@@ -89,19 +89,28 @@ def download_binance_klines(symbol, interval, config, logger, timeframe="monthly
             except Exception as e:
                 logger.error(f"⚠️ 下载异常 {filename} (尝试 {attempt + 1}): {e}")
                 if filepath.exists():
-                    filepath.unlink()  # 删除可能损坏的文件
+                    filepath.unlink()
 
         if not success:
-            logger.error(f"❌ 最终下载失败: {filename}")
             failed_files.append(filename)
 
-        current += relativedelta(months=1)
-    # 报告失败情况
-    if failed_files:
-        logger.warning(f"⚠️ {len(failed_files)} 个文件下载失败: {failed_files}")
+    # 报告结果
+    total_files = len(expected_files)
+    success_count = len(successful_files)
+    failed_count = len(failed_files)
+
+    if failed_count == 0:
+        logger.info(f"✅ 所有 {total_files} 个文件下载成功")
     else:
-        logger.info("✅ 所有文件下载完成")
-    return len(failed_files) == 0  # 返回是否全部成功
+        logger.error(f"❌ {failed_count}/{total_files} 个文件下载失败: {failed_files}")
+
+    return {
+        "total": total_files,
+        "success": success_count,
+        "failed": failed_count,
+        "failed_files": failed_files,
+        "is_complete": failed_count == 0
+    }
 
 def is_valid_zip(filepath):
     """验证 ZIP 文件是否完整"""
@@ -120,53 +129,20 @@ def merge_binance_klines(symbol, interval, config, logger):
     processed_dir = dirs["processed"]
     processed_dir.mkdir(parents=True, exist_ok=True)
 
-    # 获取期望的文件列表
+    # 获取所有期望的文件（现在应该都存在）
     start = datetime.strptime(config["data"]["start_date"], "%Y-%m")
     end = datetime.strptime(config["data"]["end_date"], "%Y-%m")
-    expected_files = []
+    zip_files = []
     current = start
     while current <= end:
         filename = f"{symbol}-{interval}-{current.year}-{current.month:02d}.zip"
-        expected_files.append(filename)
+        filepath = raw_dir / filename
+        zip_files.append(str(filepath))
         current += relativedelta(months=1)
 
-    # 查找实际存在的 ZIP 文件
-    zip_files = []
-    missing_files = []
-    for filename in expected_files:
-        filepath = raw_dir / filename
-        if filepath.exists() and is_valid_zip(filepath):
-            zip_files.append(str(filepath))
-        else:
-            missing_files.append(filename)
-    # 报告缺失文件
-    if missing_files:
-        logger.warning(
-            f"⚠️ 缺失 {len(missing_files)} 个文件: {missing_files[:5]}{'...' if len(missing_files) > 5 else ''}")
-
-    if not zip_files:
-        logger.error(f"❌ 没有找到任何有效的 ZIP 文件: {raw_dir}")
-        return None
-
-    # 原版本
-    # zip_files = sorted(glob.glob(str(raw_dir / "*.zip")))
-    # if not zip_files:
-    #     logger.error(f"未找到 ZIP 文件: {raw_dir}")
-    #     return None
-    # dfs = []
-    # for zip_path in zip_files:
-    #     with zipfile.ZipFile(zip_path, 'r') as z:
-    #         for csv_name in z.namelist():
-    #             if csv_name.endswith('.csv'):
-    #                 with z.open(csv_name) as f:
-    #                     df = pd.read_csv(f, header=None)
-    #                     dfs.append(df)
-    #                     logger.debug(f"读取: {csv_name}")
-
-    # 合并存在的文件
+    # 合并所有文件
     dfs = []
-    processed_files = 0
-    for zip_path in sorted(zip_files):
+    for zip_path in zip_files:
         try:
             with zipfile.ZipFile(zip_path, 'r') as z:
                 for csv_name in z.namelist():
@@ -174,12 +150,12 @@ def merge_binance_klines(symbol, interval, config, logger):
                         with z.open(csv_name) as f:
                             df = pd.read_csv(f, header=None)
                             dfs.append(df)
-                            processed_files += 1
         except Exception as e:
             logger.error(f"❌ 处理 ZIP 文件失败 {zip_path}: {e}")
-            continue
+            return None  # 严格模式：任何一个文件处理失败就返回 None
+
     if not dfs:
-        logger.error("❌ 未找到任何有效的 CSV 文件")
+        logger.error("❌ 未找到任何 CSV 文件")
         return None
 
     full_df = pd.concat(dfs, ignore_index=True)
@@ -188,9 +164,10 @@ def merge_binance_klines(symbol, interval, config, logger):
         'close_time', 'quote_asset_volume', 'number_of_trades',
         'taker_buy_base_volume', 'taker_buy_quote_volume', 'ignore'
     ]
+
     output_file = processed_dir / f"{symbol}_{interval}_raw.csv"
     full_df.to_csv(output_file, index=False)
-    logger.info(f"合并完成: {output_file} ({len(full_df)} 行)")
+    logger.info(f"✅ 合并完成: {output_file} ({len(full_df)} 行)")
     return str(output_file)
 
 # 修复时间戳函数 (✅BTCUSDT 2025年之后的数据是微秒级，之前是毫秒级)
