@@ -108,13 +108,27 @@ def merge_binance_klines(symbol, interval, config, logger):
 
 # 修复时间戳函数 (✅BTCUSDT 2025年之后的数据是微秒级，之前是毫秒级)
 def normalize_timestamp(ts):
+    """安全的时间戳标准化函数"""
+    # 如果是字符串，尝试转换为数值
+    if isinstance(ts, str):
+        try:
+            ts = float(ts)
+        except (ValueError, TypeError):
+            return pd.NA  # 无法转换的字符串返回 NaN
+    # 如果是 NaN 或 None
     if pd.isna(ts):
         return ts
-    if ts > 1e15:       # 微秒 → 毫秒
+    # 现在确保 ts 是数值类型
+    try:
+        ts = float(ts)
+    except (ValueError, TypeError):
+        return pd.NA
+    # 标准化时间戳
+    if ts > 1e15:  # 微秒 → 毫秒
         return ts // 1000
-    elif ts > 1e12:     # 毫秒 → 保留
+    elif ts > 1e12:  # 毫秒 → 保留
         return ts
-    elif ts > 1e9:      # 秒 → 毫秒
+    elif ts > 1e9:  # 秒 → 毫秒
         return ts * 1000
     else:
         return ts

@@ -18,6 +18,9 @@ from tools.log_utils import setup_logger
 def main():
     # 加载配置
     config_path = PROJECT_ROOT / "config.yaml"
+    # 验证配置文件是否存在
+    if not config_path.exists():
+        raise FileNotFoundError(f"配置文件不存在: {config_path}")
     config = load_config(str(config_path))
 
     # 设置日志（使用配置中的 logs_dir）
