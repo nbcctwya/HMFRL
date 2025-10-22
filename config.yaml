@@ -9,8 +9,8 @@ data:
   # DOTUSDT 2020年8月才发行
   # TAOUSDT 2024年4月才发行
   #symbols: ["BTCUSDT"]
-  #intervals: ["1d", "1m"]           # 支持多周期
-  intervals: ["1d"]
+  intervals: ["1d", "1m"]           # 支持多周期
+  #intervals: ["1d"]
   start_date: "2020-01"
   end_date: "2025-09"
 
